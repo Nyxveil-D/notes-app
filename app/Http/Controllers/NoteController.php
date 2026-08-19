@@ -14,9 +14,20 @@ class NoteController extends Controller
 {
     public function index(Request $request): View
     {
-        $notes = $request->user()->notes()->latest()->paginate(10);
+        $search = trim((string) $request->query('search', ''));
 
-        return view('notes.index', compact('notes'));
+        $query = $request->user()->notes();
+
+        if ($search !== '') {
+            $query = $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('content', 'like', "%{$search}%");
+            });
+        }
+
+        $notes = $query->latest()->paginate(10)->appends(['search' => $search]);
+
+        return view('notes.index', compact('notes', 'search'));
     }
 
     public function create(): View

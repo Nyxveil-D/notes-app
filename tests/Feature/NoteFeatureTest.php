@@ -59,6 +59,68 @@ class NoteFeatureTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user)->from(route('notes.create'))->post(route('notes.store'), ['title' => '', 'content' => ''])->assertRedirect(route('notes.create'))->assertSessionHasErrors(['title', 'content']);
-        $this->assertDatabaseCount('notes',0);
+        $this->assertDatabaseCount('notes', 0);
+    }
+
+    public function test_user_can_search_their_notes_by_title(): void
+    {
+        $user = User::factory()->create();
+        $matchingNote = Note::factory()->for($user)->create(['title' => 'Laravel project ideas', 'content' => 'Some content']);
+        Note::factory()->for($user)->create(['title' => 'Python notes', 'content' => 'Other content']);
+
+        $response = $this->actingAs($user)->get(route('notes.index', ['search' => 'Laravel']));
+        $response->assertOk();
+        $response->assertSee($matchingNote->title);
+        $this->assertCount(1, $response->viewData('notes'));
+    }
+
+    public function test_user_can_search_their_notes_by_content(): void
+    {
+        $user = User::factory()->create();
+        $matchingNote = Note::factory()->for($user)->create(['title' => 'Work notes', 'content' => 'Laravel framework documentation']);
+        Note::factory()->for($user)->create(['title' => 'Personal', 'content' => 'Other content']);
+
+        $response = $this->actingAs($user)->get(route('notes.index', ['search' => 'Laravel']));
+        $response->assertOk();
+        $response->assertSee($matchingNote->title);
+        $this->assertCount(1, $response->viewData('notes'));
+    }
+
+    public function test_another_users_matching_note_is_not_returned_in_search(): void
+    {
+        $user1 = User::factory()->create();
+        $user2 = User::factory()->create();
+        Note::factory()->for($user1)->create(['title' => 'User 1 Laravel note', 'content' => 'Content']);
+        Note::factory()->for($user2)->create(['title' => 'User 2 Laravel note', 'content' => 'Content']);
+
+        $response = $this->actingAs($user1)->get(route('notes.index', ['search' => 'Laravel']));
+        $response->assertOk();
+        $this->assertCount(1, $response->viewData('notes'));
+        $this->assertSame($user1->id, $response->viewData('notes')[0]->user_id);
+    }
+
+    public function test_empty_search_returns_all_paginated_notes(): void
+    {
+        $user = User::factory()->create();
+        $note1 = Note::factory()->for($user)->create(['title' => 'Note 1']);
+        $note2 = Note::factory()->for($user)->create(['title' => 'Note 2']);
+
+        $response = $this->actingAs($user)->get(route('notes.index', ['search' => '']));
+        $response->assertOk();
+        $this->assertCount(2, $response->viewData('notes'));
+    }
+
+    public function test_search_query_preserved_in_pagination(): void
+    {
+        $user = User::factory()->create();
+        for ($i = 0; $i < 15; $i++) {
+            Note::factory()->for($user)->create(['title' => "Laravel note $i", 'content' => 'Content']);
+        }
+
+        $response = $this->actingAs($user)->get(route('notes.index', ['search' => 'Laravel']));
+        $response->assertOk();
+
+        $paginationLinks = $response->viewData('notes')->links()->render();
+        $this->assertStringContainsString('search=Laravel', $paginationLinks);
     }
 }

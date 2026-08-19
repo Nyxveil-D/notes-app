@@ -1,0 +1,2 @@
+@extends('layouts.app')
+@section('content')<section class="card"><h1>New note</h1><form action="{{ route('notes.store') }}" method="POST">@csrf @include('notes._form',['submitLabel'=>'Create note'])</form><p><a href="{{ route('notes.index') }}">Back to notes</a></p></section>@endsection

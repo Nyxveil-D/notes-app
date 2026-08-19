@@ -1,0 +1,2 @@
+@extends('layouts.app')
+@section('content')<article class="card"><h1>{{ $note->title }}</h1><div>{!! nl2br(e($note->content)) !!}</div></article><div class="actions"><a class="button" href="{{ route('notes.edit',$note) }}">Edit</a><form action="{{ route('notes.destroy',$note) }}" method="POST">@csrf @method('DELETE')<button class="danger">Delete</button></form><a href="{{ route('notes.index') }}">Back to notes</a></div>@endsection

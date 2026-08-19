@@ -1,0 +1,1 @@
+<label>Title<input name="title" value="{{ old('title', $note->title ?? '') }}" maxlength="255" required></label><label>Content<textarea name="content" required>{{ old('content', $note->content ?? '') }}</textarea></label>@if($errors->any())<ul class="errors">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>@endif<button>{{ $submitLabel }}</button>

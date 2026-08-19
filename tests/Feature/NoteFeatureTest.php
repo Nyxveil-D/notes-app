@@ -123,4 +123,28 @@ class NoteFeatureTest extends TestCase
         $paginationLinks = $response->viewData('notes')->links()->render();
         $this->assertStringContainsString('search=Laravel', $paginationLinks);
     }
+
+    public function test_authenticated_notes_index_has_no_cache_headers(): void
+    {
+        $user = User::factory()->create();
+        Note::factory()->for($user)->create(['title' => 'Test note', 'content' => 'Content']);
+
+        $response = $this->actingAs($user)->get(route('notes.index'));
+
+        $response->assertOk();
+        $cacheControl = $response->headers->get('Cache-Control');
+        $this->assertStringContainsString('no-store', $cacheControl);
+        $this->assertStringContainsString('must-revalidate', $cacheControl);
+        $this->assertStringContainsString('max-age=0', $cacheControl);
+    }
+
+    public function test_guest_login_page_does_not_have_no_store_cache_directive(): void
+    {
+        $response = $this->get(route('login'));
+
+        $response->assertOk();
+        $cacheControl = $response->headers->get('Cache-Control');
+        // Guest pages should not have no-store directive
+        $this->assertStringNotContainsString('no-store', $cacheControl ?? '');
+    }
 }

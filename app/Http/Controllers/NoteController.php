@@ -37,16 +37,9 @@ class NoteController extends Controller
 
     public function store(StoreNoteRequest $request): RedirectResponse
     {
-        $note = $request->user()->notes()->create($request->validated());
+        $request->user()->notes()->create($request->validated());
 
-        return redirect()->route('notes.show', $note)->with('status', 'Note created.');
-    }
-
-    public function show(Note $note): View
-    {
-        Gate::authorize('view', $note);
-
-        return view('notes.show', compact('note'));
+        return redirect()->route('notes.index')->with('status', 'Note created.');
     }
 
     public function edit(Note $note): View
@@ -61,7 +54,7 @@ class NoteController extends Controller
         Gate::authorize('update', $note);
         $note->update($request->validated());
 
-        return redirect()->route('notes.show', $note)->with('status', 'Note updated.');
+        return redirect()->route('notes.index')->with('status', 'Note updated.');
     }
 
     public function destroy(Note $note): RedirectResponse

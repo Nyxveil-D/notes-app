@@ -14,5 +14,5 @@ Route::middleware('guest')->group(function () {
 });
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 Route::middleware('auth')->group(function () {
-    Route::resource('notes', NoteController::class);
+    Route::resource('notes', NoteController::class)->except(['show']);
 });

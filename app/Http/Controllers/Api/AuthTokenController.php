@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -28,6 +29,19 @@ class AuthTokenController extends Controller
             'message' => 'Token created successfully',
             'token_type' => 'Bearer',
             'token' => $token->plainTextToken,
+        ]);
+    }
+
+    public function destroy(Request $request): JsonResponse
+    {
+        $token = $request->user()->currentAccessToken();
+
+        if (method_exists($token, 'delete')) {
+            $token->delete();
+        }
+
+        return response()->json([
+            'message' => 'Logged out successfully.',
         ]);
     }
 }

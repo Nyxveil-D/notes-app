@@ -52,6 +52,59 @@ class SanctumAuthenticationTest extends TestCase
             ->assertJsonPath('data.0.id', $note->id);
     }
 
+    public function test_authenticated_token_can_log_out(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('Postman')->plainTextToken;
+
+        $this->withToken($token)
+            ->postJson('/api/logout')
+            ->assertOk()
+            ->assertJson(['message' => 'Logged out successfully.']);
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_logout_revokes_only_the_current_token(): void
+    {
+        $user = User::factory()->create();
+        $currentToken = $user->createToken('Current device')->plainTextToken;
+        $otherToken = $user->createToken('Other device')->plainTextToken;
+
+        $this->withToken($currentToken)->postJson('/api/logout')->assertOk();
+        $this->app['auth']->forgetGuards();
+
+        $this->withToken($currentToken)->getJson('/api/notes')->assertUnauthorized();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($currentToken)->postJson('/api/logout')->assertUnauthorized();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($otherToken)->getJson('/api/notes')->assertOk();
+        $this->assertDatabaseCount('personal_access_tokens', 1);
+    }
+
+    public function test_logout_without_a_current_access_token_does_not_fail(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->postJson('/api/logout')
+            ->assertOk()
+            ->assertJson(['message' => 'Logged out successfully.']);
+    }
+
+    public function test_unauthenticated_client_cannot_log_out(): void
+    {
+        $this->postJson('/api/logout')
+            ->assertUnauthorized()
+            ->assertJson(['message' => 'Unauthenticated.']);
+    }
+
+    public function test_invalid_bearer_token_cannot_log_out(): void
+    {
+        $this->withToken('invalid-token')
+            ->postJson('/api/logout')
+            ->assertUnauthorized()
+            ->assertJson(['message' => 'Unauthenticated.']);
+    }
+
     public function test_notes_api_rejects_requests_without_a_token_or_session(): void
     {
         $this->getJson('/api/notes')->assertUnauthorized();

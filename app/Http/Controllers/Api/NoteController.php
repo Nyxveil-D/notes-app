@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreNoteRequest;
 use App\Http\Requests\UpdateNoteRequest;
+use App\Http\Resources\NoteResource;
 use App\Models\Note;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Gate;
 
 class NoteController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $search = trim((string) $request->query('search', ''));
 
@@ -27,26 +28,24 @@ class NoteController extends Controller
 
         $notes = $query->latest()->paginate(10)->appends(['search' => $search]);
 
-        return response()->json($notes);
+        return NoteResource::collection($notes);
     }
 
     public function store(StoreNoteRequest $request): JsonResponse
     {
         $note = $request->user()->notes()->create($request->validated());
 
-        return response()->json([
-            'message' => 'Note created successfully',
-            'data' => $note,
-        ], 201);
+        return (new NoteResource($note))
+            ->additional(['message' => 'Note created successfully'])
+            ->response()
+            ->setStatusCode(201);
     }
 
-    public function show(Note $note): JsonResponse
+    public function show(Note $note): NoteResource
     {
         Gate::authorize('view', $note);
 
-        return response()->json([
-            'data' => $note,
-        ]);
+        return new NoteResource($note);
     }
 
     public function update(UpdateNoteRequest $request, Note $note): JsonResponse
@@ -55,10 +54,9 @@ class NoteController extends Controller
 
         $note->update($request->validated());
 
-        return response()->json([
-            'message' => 'Note updated successfully',
-            'data' => $note,
-        ]);
+        return (new NoteResource($note))
+            ->additional(['message' => 'Note updated successfully'])
+            ->response();
     }
 
     public function destroy(Note $note): JsonResponse

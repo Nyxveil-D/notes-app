@@ -25,9 +25,14 @@ class NoteApiTest extends TestCase
         $this->actingAs($user)
             ->getJson('/api/notes')
             ->assertOk()
-            ->assertJsonStructure(['data' => [['id', 'title', 'content', 'created_at', 'updated_at']]])
+            ->assertJsonStructure([
+                'data' => [['id', 'title', 'content', 'created_at', 'updated_at']],
+                'links',
+                'meta' => ['current_page', 'last_page', 'per_page', 'total'],
+            ])
             ->assertJsonPath('data.0.id', $ownNote->id)
-            ->assertJsonMissing(['id' => $otherNote->id]);
+            ->assertJsonMissing(['id' => $otherNote->id])
+            ->assertJsonMissingPath('data.0.user_id');
     }
 
     public function test_authenticated_user_cannot_view_another_users_note(): void
@@ -47,7 +52,9 @@ class NoteApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('message', 'Note created successfully')
             ->assertJsonPath('data.title', 'API note')
-            ->assertJsonPath('data.content', 'Created through the API.');
+            ->assertJsonPath('data.content', 'Created through the API.')
+            ->assertJsonStructure(['data' => ['id', 'title', 'content', 'created_at', 'updated_at']])
+            ->assertJsonMissingPath('data.user_id');
 
         $this->assertDatabaseHas('notes', ['user_id' => $user->id, 'title' => 'API note']);
     }
@@ -73,7 +80,9 @@ class NoteApiTest extends TestCase
         $this->actingAs($user)
             ->getJson("/api/notes/{$note->id}")
             ->assertOk()
-            ->assertJsonPath('data.id', $note->id);
+            ->assertJsonPath('data.id', $note->id)
+            ->assertJsonStructure(['data' => ['id', 'title', 'content', 'created_at', 'updated_at']])
+            ->assertJsonMissingPath('data.user_id');
     }
 
     public function test_authenticated_user_can_update_their_own_note(): void
@@ -85,7 +94,9 @@ class NoteApiTest extends TestCase
             ->patchJson("/api/notes/{$note->id}", ['title' => 'Updated API note', 'content' => 'Updated content.'])
             ->assertOk()
             ->assertJsonPath('message', 'Note updated successfully')
-            ->assertJsonPath('data.title', 'Updated API note');
+            ->assertJsonPath('data.title', 'Updated API note')
+            ->assertJsonStructure(['data' => ['id', 'title', 'content', 'created_at', 'updated_at']])
+            ->assertJsonMissingPath('data.user_id');
 
         $this->assertDatabaseHas('notes', ['id' => $note->id, 'title' => 'Updated API note']);
     }
@@ -158,9 +169,9 @@ class NoteApiTest extends TestCase
             ->getJson('/api/notes?search=Laravel&page=2')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('current_page', 2)
-            ->assertJsonPath('path', url('/api/notes'))
-            ->assertJsonPath('total', 11)
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('meta.path', url('/api/notes'))
+            ->assertJsonPath('meta.total', 11)
             ->assertJsonFragment(['url' => url('/api/notes?search=Laravel&page=1')]);
     }
 
